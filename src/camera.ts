@@ -13,6 +13,7 @@ const OUTPUT_FPS = 15;
  */
 const rebroadcastH264Arguments = [
     '-map', '0:v:0',
+    '-map', '0:a:0?',
     '-vf', 'fps=15,scale=min(1280\\,iw):-2,format=yuv420p',
     '-r', '15',
     '-fps_mode', 'cfr',
@@ -28,6 +29,7 @@ const rebroadcastH264Arguments = [
     '-sc_threshold', '0',
     '-force_key_frames', 'expr:eq(n,0)+gte(t,n_forced*1)',
     '-x264-params', 'repeat-headers=1:open_gop=0:keyint=15:min-keyint=15:scenecut=0',
+    '-acodec', 'copy',
 ];
 
 export class ImouCameraDevice extends ScryptedDeviceBase implements VideoCamera {
@@ -62,6 +64,7 @@ export class ImouCameraDevice extends ScryptedDeviceBase implements VideoCamera 
                 codec: 'h264',
                 fps: OUTPUT_FPS,
             },
+            audio: {},
         }];
     }
 
@@ -75,26 +78,16 @@ export class ImouCameraDevice extends ScryptedDeviceBase implements VideoCamera 
             '-probesize', '5000000',
             '-i', live.url,
         ];
-        if (live.protocol === 'rtsp') {
-            inputArguments.unshift(
-                '-rtsp_transport', 'tcp',
-                '-rtsp_flags', 'prefer_tcp',
-                '-allowed_media_types', 'video',
-                '-err_detect', 'ignore_err',
-            );
-        }
-        else {
-            inputArguments.unshift(
-                '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
-                '-live_start_index', '-3',
-                '-err_detect', 'ignore_err',
-            );
-        }
+        inputArguments.unshift(
+            '-rtsp_transport', 'tcp',
+            '-rtsp_flags', 'prefer_tcp',
+            '-err_detect', 'ignore_err',
+        );
 
         const ffmpegInput: FFmpegInput = {
             url: live.url,
             inputArguments,
-            h264EncoderArguments: live.protocol === 'rtsp' ? rebroadcastH264Arguments : undefined,
+            h264EncoderArguments: rebroadcastH264Arguments,
             mediaStreamOptions: {
                 id: 'main',
                 tool: 'ffmpeg',
@@ -104,6 +97,7 @@ export class ImouCameraDevice extends ScryptedDeviceBase implements VideoCamera 
                     codec: 'h264',
                     fps: OUTPUT_FPS,
                 },
+                audio: {},
             },
         };
 
@@ -112,8 +106,7 @@ export class ImouCameraDevice extends ScryptedDeviceBase implements VideoCamera 
             ffmpegInput.mediaStreamOptions!.refreshAt = expireAt;
         }
 
-        const mode = live.protocol === 'rtsp' ? 'h264 720p15 short-GOP for prebuffer' : 'hls passthrough';
-        this.plugin.pluginLog.info(`video stream ${live.protocol} ${mode}`);
+        this.plugin.pluginLog.info('video stream rtsp h264 720p15 short-GOP for prebuffer + audio copy when present');
         return await mediaManager.createFFmpegMediaObject(ffmpegInput);
     }
 }

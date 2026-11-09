@@ -4,8 +4,7 @@ import { AppIdAuth, ImouApiError } from './auth/appid-auth';
 import { ImouCameraDevice } from './camera';
 import { createPluginLogger, normalizeLogLevel, PluginLogger } from './log';
 import { DEFAULT_SERVER_REGION, normalizeServerRegion, regionHostFromSetting } from './regions';
-import { createPluginSettings, normalizePreviewProtocol } from './settings';
-import type { PreviewProtocol } from './api/imou-client';
+import { createPluginSettings } from './settings';
 
 const { deviceManager } = sdk;
 
@@ -130,40 +129,13 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
         }
         try {
             const client = this.api(String(dataCenter || DEFAULT_SERVER_REGION), String(appId), String(appSecret));
-            const protocol: PreviewProtocol = normalizePreviewProtocol(this.settingsStorage.values.previewProtocol) === 'HLS'
-                ? 'hls'
-                : 'rtsp';
-            if (protocol !== 'rtsp') {
-                await this.closeLive(nativeId);
-            }
-            let live: LiveAddress;
-            try {
-                live = await client.openLive(camera, streamId, protocol);
-            }
-            catch (firstError) {
-                if (protocol !== 'hls') {
-                    throw firstError;
-                }
-                // Stale cloud live after errors or long idle: unbind once and bind again.
-                this.pluginLog.debug(`live nativeId=${nativeId} hls retry after ${errorMessage(firstError)}`);
-                await this.closeLive(nativeId);
-                live = await client.openLive(camera, streamId, protocol);
-            }
-            if (live.liveToken) {
-                this.liveTokens.set(nativeId, live.liveToken);
-            }
+            await this.closeLive(nativeId);
+            const live = await client.openLive(camera, streamId);
             const host = new URL(live.url).host;
-            if (live.protocol === 'rtsp') {
-                const eventId = new URL(live.url).searchParams.get('eventLiveID') || '';
-                this.pluginLog.info(
-                    `live nativeId=${nativeId} streamId=${streamId} protocol=rtsp host=${host} eventLiveID=${eventId.slice(0, 8)}`,
-                );
-            }
-            else {
-                this.pluginLog.debug(
-                    `live nativeId=${nativeId} streamId=${streamId} protocol=hls host=${host} liveToken=${live.liveToken?.slice(0, 8) ?? 'none'}`,
-                );
-            }
+            const eventId = new URL(live.url).searchParams.get('eventLiveID') || '';
+            this.pluginLog.info(
+                `live nativeId=${nativeId} streamId=${streamId} protocol=rtsp host=${host} eventLiveID=${eventId.slice(0, 8)}`,
+            );
             return live;
         }
         catch (error) {
@@ -200,7 +172,7 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
             await this.client.closeLive(liveToken);
         }
         catch (error) {
-            this.pluginLog.error(`hls nativeId=${nativeId} close ${errorMessage(error)}`);
+            this.pluginLog.error(`live nativeId=${nativeId} unbind ${errorMessage(error)}`);
         }
     }
 }

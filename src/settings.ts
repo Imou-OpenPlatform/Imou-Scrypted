@@ -2,17 +2,8 @@ import { ScryptedDeviceBase } from '@scrypted/sdk';
 import { StorageSettings } from '@scrypted/sdk/storage-settings';
 import { DEFAULT_SERVER_REGION, SERVER_REGION_CHOICES } from './regions';
 
-export type PreviewProtocolSetting = 'RTSP' | 'HLS';
-
 export interface PluginSettingsOwner {
     syncDevices(duration: number): Promise<void>;
-}
-
-export function normalizePreviewProtocol(value: unknown): PreviewProtocolSetting {
-    if (String(value).toUpperCase() === 'HLS') {
-        return 'HLS';
-    }
-    return 'RTSP';
 }
 
 export function createPluginSettings(plugin: PluginSettingsOwner & ScryptedDeviceBase) {
@@ -34,12 +25,6 @@ export function createPluginSettings(plugin: PluginSettingsOwner & ScryptedDevic
             description: 'AppSecret from the Imou Open Platform application.',
             type: 'password',
             onPut: async () => plugin.syncDevices(0),
-        },
-        previewProtocol: {
-            title: 'Cloud Preview Protocol',
-            description: 'RTSP (getStreamUrl) often starts preview faster. HLS (bindDeviceLive) is more refresh-friendly but the cloud playlist may lag ~10s and Scrypted adds a few seconds when Main prebuffer is off.',
-            choices: ['RTSP', 'HLS'],
-            defaultValue: 'HLS',
         },
         logLevel: {
             title: 'Log Level',

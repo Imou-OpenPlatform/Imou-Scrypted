@@ -12,16 +12,12 @@ export interface ListedCamera {
 }
 
 export interface LiveAddress {
-    protocol: 'rtsp' | 'hls';
+    protocol: 'rtsp';
     url: string;
-    liveToken?: string;
 }
 
-export type PreviewProtocol = 'rtsp' | 'hls';
-
 /**
- * Device list and cloud preview URLs.
- * RTSP: getStreamUrl (Home Assistant). HLS: bindDeviceLive + getLiveStreamInfo (plan doc path).
+ * Device list and cloud preview via getStreamUrl (RTSP), aligned with Home Assistant / pyimouapi.
  */
 export class ImouClient {
     constructor(private readonly auth: AppIdAuth, private readonly log: (line: string) => void) {
@@ -45,18 +41,7 @@ export class ImouClient {
         return cameras;
     }
 
-    async openLive(camera: ListedCamera, streamId: number, protocol: PreviewProtocol): Promise<LiveAddress> {
-        if (protocol === 'hls') {
-            return this.openHlsLive(camera, streamId);
-        }
-        return this.openRtspLive(camera, streamId);
-    }
-
-    async closeLive(liveToken: string): Promise<void> {
-        await this.auth.request('/openapi/unbindLive', { liveToken }, true);
-    }
-
-    private async openRtspLive(camera: ListedCamera, streamId: number): Promise<LiveAddress> {
+    async openLive(camera: ListedCamera, streamId: number): Promise<LiveAddress> {
         let lastError: unknown;
         for (let attempt = 1; attempt <= 3; attempt += 1) {
             try {
@@ -79,41 +64,9 @@ export class ImouClient {
         throw lastError;
     }
 
-    private async openHlsLive(camera: ListedCamera, streamId: number): Promise<LiveAddress> {
-        const params: Record<string, any> = {
-            deviceId: camera.deviceId,
-            channelId: camera.channelId,
-            streamId,
-        };
-        if (camera.productId) {
-            params.productId = camera.productId;
-        }
-        let bindData: Record<string, any> = {};
-        try {
-            bindData = await this.auth.request('/openapi/bindDeviceLive', params, true);
-            this.log('bindDeviceLive: created');
-        }
-        catch (error) {
-            if (error instanceof ImouApiError && error.code === 'LV1001') {
-                this.log('bindDeviceLive: live already exists (LV1001)');
-            }
-            else {
-                throw error;
-            }
-        }
-        const info = await this.auth.request('/openapi/getLiveStreamInfo', {
-            deviceId: camera.deviceId,
-            channelId: camera.channelId,
-        }, true);
-        const stream = pickMainHls(info) ?? pickMainHls(bindData);
-        const hls = stream?.hls;
-        if (typeof hls !== 'string' || !hls.startsWith('http')) {
-            throw new ImouApiError('no-hls', 'getLiveStreamInfo');
-        }
-        const liveToken = String(
-            stream?.liveToken ?? info.liveToken ?? bindData.liveToken ?? '',
-        ).trim() || undefined;
-        return { protocol: 'hls', url: hls, liveToken };
+    /** Releases a legacy HLS liveToken if the user previously used bindDeviceLive. */
+    async closeLive(liveToken: string): Promise<void> {
+        await this.auth.request('/openapi/unbindLive', { liveToken }, true);
     }
 
     private async rtspUrl(camera: ListedCamera, streamId: number): Promise<string> {
@@ -132,19 +85,6 @@ export class ImouClient {
         }
         return url;
     }
-}
-
-function pickMainHls(data: Record<string, any> | undefined): Record<string, any> | undefined {
-    const streams = Array.isArray(data?.streams) ? data.streams : [];
-    const main = streams.filter((stream: any) => Number(stream.streamId) === 0 && stream.hls);
-    const pool = main.length ? main : streams.filter((stream: any) => stream.hls);
-    const on = pool.filter((stream: any) => String(stream.status) === '1');
-    const candidates = on.length ? on : pool;
-    return (
-        candidates.find((stream: any) => String(stream.hls).startsWith('https://'))
-        ?? candidates[0]
-        ?? undefined
-    );
 }
 
 function delay(ms: number): Promise<void> {
