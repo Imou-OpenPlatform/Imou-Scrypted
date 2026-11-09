@@ -28,7 +28,7 @@ export function createPluginSettings(plugin: PluginSettingsOwner & ScryptedDevic
         },
         logLevel: {
             title: 'Log Level',
-            description: 'Info: discovery and errors only. Debug: also logs live URLs, transcode, and codec probe details (no secrets).',
+            description: 'Info: discovery and errors only. Debug: also logs live URLs and stream setup (no secrets).',
             choices: ['info', 'debug'],
             defaultValue: 'info',
         },

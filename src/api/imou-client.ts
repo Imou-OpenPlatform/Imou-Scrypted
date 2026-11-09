@@ -16,9 +16,6 @@ export interface LiveAddress {
     url: string;
 }
 
-/**
- * Device list and cloud preview via getStreamUrl (RTSP), aligned with Home Assistant / pyimouapi.
- */
 export class ImouClient {
     constructor(private readonly auth: AppIdAuth, private readonly log: (line: string) => void) {
     }
@@ -64,7 +61,6 @@ export class ImouClient {
         throw lastError;
     }
 
-    /** Releases a legacy HLS liveToken if the user previously used bindDeviceLive. */
     async closeLive(liveToken: string): Promise<void> {
         await this.auth.request('/openapi/unbindLive', { liveToken }, true);
     }
@@ -91,7 +87,6 @@ function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** Open Platform live quota; retrying wastes calls and prebuffer restart loops. */
 function isNonRetryableLiveError(error: unknown): boolean {
     return error instanceof ImouApiError && error.code === 'FL1005';
 }

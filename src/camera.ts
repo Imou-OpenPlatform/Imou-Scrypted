@@ -7,11 +7,6 @@ const { mediaManager } = sdk;
 
 const OUTPUT_FPS = 15;
 
-/**
- * Imou cloud H.264 copy leaves long GOP + 90k tbr; Rebroadcast prebuffer often misses IDR
- * ("Unable to find sync frame"). Re-encode to short-GOP Baseline so the local RTSP ring
- * always has sync frames for WebRTC (lighter than when source was HEVC).
- */
 const rebroadcastH264Arguments = [
     '-map', '0:v:0',
     '-map', '0:a:0?',
@@ -30,7 +25,6 @@ const rebroadcastH264Arguments = [
     '-sc_threshold', '0',
     '-force_key_frames', 'expr:eq(n,0)+gte(t,n_forced*1)',
     '-x264-params', 'repeat-headers=1:open_gop=0:keyint=15:min-keyint=15:scenecut=0',
-    '-acodec', 'copy',
 ];
 
 export class ImouCameraDevice extends ScryptedDeviceBase implements VideoCamera {
@@ -104,7 +98,6 @@ export class ImouCameraDevice extends ScryptedDeviceBase implements VideoCamera 
 
         const refreshAt = refreshBeforeExpire(live.url);
         if (refreshAt !== undefined) {
-            // Rebroadcast schedules refresh as (refreshAt - now); never omit or URL expiry leaves NaN.
             ffmpegInput.mediaStreamOptions!.refreshAt = Math.max(refreshAt, Date.now() + 5_000);
         }
 

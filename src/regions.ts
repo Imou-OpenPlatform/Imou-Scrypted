@@ -1,4 +1,3 @@
-/** Aligned with Home Assistant Imou login: region keys and selector labels. */
 export type ServerRegionKey = 'sg' | 'eu' | 'na' | 'cn';
 
 export const SERVER_REGION_LABELS: Record<ServerRegionKey, string> = {
@@ -8,7 +7,6 @@ export const SERVER_REGION_LABELS: Record<ServerRegionKey, string> = {
     cn: 'China',
 };
 
-/** Hostnames match Imou Life `API_URL_REGIONS` (custom_components/imou_life/const.py). */
 export const SERVER_REGION_HOSTS: Record<ServerRegionKey, string> = {
     sg: 'openapi-sg.easy4ip.com',
     eu: 'openapi-fk.easy4ip.com',

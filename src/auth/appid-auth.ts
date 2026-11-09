@@ -20,10 +20,6 @@ interface ApiResult {
     data: Record<string, any>;
 }
 
-/**
- * AppId signature, accessToken cache, and IPv4 HTTPS calls.
- * The token is reused until it is close to expiry, then refreshed once on TK1002.
- */
 export class AppIdAuth {
     private token: string | undefined;
     private tokenExpiresAt = 0;
@@ -123,7 +119,6 @@ export class AppIdAuth {
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(body),
-                    /** Open Platform client statistics (same convention as pyimouapi HA). */
                     'Client-Type': 'Scrypted',
                 },
                 lookup: (hostname, options, callback) => {

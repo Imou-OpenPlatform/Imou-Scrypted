@@ -15,9 +15,7 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
     private client: ImouClient | undefined;
     private clientKey = '';
     private liveOpenInflight = new Map<string, Promise<LiveAddress>>();
-    /** Prebuffer + WebRTC often call getVideoStream together; share one MediaObject / one cloud RTSP pull. */
     readonly videoStreamInflight = new Map<string, Promise<MediaObject>>();
-    /** Prebuffer may call getDevice immediately after reload; wait until listCameras finishes. */
     private catalogSync: Promise<void> = Promise.resolve();
     readonly pluginLog: PluginLogger;
 
@@ -26,7 +24,6 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
     constructor() {
         super();
         this.pluginLog = createPluginLogger(this, () => normalizeLogLevel(this.settingsStorage.values.logLevel));
-        // Avoid overlapping accessToken calls when the plugin reloads during deploy.
         this.catalogSync = new Promise<void>(resolve => {
             setTimeout(() => {
                 void this.syncDevices(0).finally(() => resolve());
@@ -83,7 +80,7 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
             this.pluginLog.error(`${errorMessage(error)} (host=${host})`);
             if (error instanceof ImouApiError && error.code === 'timeout') {
                 this.pluginLog.error(
-                    'accessToken timed out from the Scrypted host. If WSL probe:auth works, check Docker outbound HTTPS/DNS or click Refresh Devices.',
+                    'accessToken timed out from the Scrypted host. Check outbound HTTPS/DNS from the server, then Refresh Devices.',
                 );
             }
         }
@@ -108,7 +105,6 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
         this.devices.delete(nativeId);
     }
 
-    /** 每次 getVideoStream 只向 Imou 要一条 RTSP URL；并发调用共用同一次 openLive，避免 Prebuffer 重试叠 API。 */
     async openLive(nativeId: string, camera: ListedCamera, streamId: number): Promise<LiveAddress> {
         const inflightKey = `${nativeId}:${streamId}`;
         const existing = this.liveOpenInflight.get(inflightKey);
