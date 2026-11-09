@@ -123,6 +123,8 @@ export class AppIdAuth {
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(body),
+                    /** Open Platform client statistics (same convention as pyimouapi HA). */
+                    'Client-Type': 'Scrypted',
                 },
                 lookup: (hostname, options, callback) => {
                     dns.lookup(hostname, { ...options, family: 4, all: false }, callback);
