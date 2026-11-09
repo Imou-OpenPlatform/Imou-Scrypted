@@ -1,6 +1,7 @@
 import sdk, { FFmpegInput, MediaObject, RequestMediaStreamOptions, ResponseMediaStreamOptions, ScryptedDeviceBase, VideoCamera } from '@scrypted/sdk';
 import type ImouCameraPlugin from './provider';
 import type { ListedCamera, LiveAddress } from './api/imou-client';
+import { refreshBeforeExpire } from './live-url';
 
 const { mediaManager } = sdk;
 
@@ -101,26 +102,13 @@ export class ImouCameraDevice extends ScryptedDeviceBase implements VideoCamera 
             },
         };
 
-        const expireAt = streamExpireAtMs(live.url);
-        if (expireAt && expireAt > Date.now() + 120_000) {
-            ffmpegInput.mediaStreamOptions!.refreshAt = expireAt;
+        const refreshAt = refreshBeforeExpire(live.url);
+        if (refreshAt !== undefined) {
+            // Rebroadcast schedules refresh as (refreshAt - now); never omit or URL expiry leaves NaN.
+            ffmpegInput.mediaStreamOptions!.refreshAt = Math.max(refreshAt, Date.now() + 5_000);
         }
 
         this.plugin.pluginLog.info('video stream rtsp h264 720p15 short-GOP for prebuffer + audio copy when present');
         return await mediaManager.createFFmpegMediaObject(ffmpegInput);
-    }
-}
-
-/** Absolute epoch ms when the signed URL stops working (Rebroadcast subtracts 30s itself). */
-function streamExpireAtMs(url: string): number | undefined {
-    try {
-        const expire = Number(new URL(url).searchParams.get('expire'));
-        if (!Number.isFinite(expire) || expire <= 0) {
-            return undefined;
-        }
-        return expire * 1000;
-    }
-    catch {
-        return undefined;
     }
 }
