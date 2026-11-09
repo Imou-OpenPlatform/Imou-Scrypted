@@ -1,5 +1,5 @@
 {
-   "name": "@imou/scrypted-imou-camera",
+   "name": "scrypted-imou-camera",
    "scripts": {
       "scrypted-setup-project": "scrypted-setup-project",
       "prescrypted-setup-project": "scrypted-package-json",

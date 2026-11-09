@@ -29,7 +29,7 @@ Not included yet: motion, doorbell, snapshot, PTZ, two-way talk, HomeKit Secure 
 ### From npm (when published)
 
 1. Scrypted UI → **Plugins** → **Install Plugin**
-2. Search for `@imou/scrypted-imou-camera` and install
+2. Search for `scrypted-imou-camera` and install
 3. Open **Imou Camera** → enter region, AppId, AppSecret → **Refresh Devices**
 
 ### Develop / deploy from source
@@ -76,7 +76,7 @@ If preview fails with decode or ffmpeg errors on a newer 4K/HEVC model, confirm 
 
 | Field | Value |
 |-------|--------|
-| npm name | `@imou/scrypted-imou-camera` |
+| npm name | `scrypted-imou-camera` |
 | Scrypted name | Imou Camera |
 | Type | `DeviceProvider` |
 
