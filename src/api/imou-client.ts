@@ -61,10 +61,6 @@ export class ImouClient {
         throw lastError;
     }
 
-    async closeLive(liveToken: string): Promise<void> {
-        await this.auth.request('/openapi/unbindLive', { liveToken }, true);
-    }
-
     private async rtspUrl(camera: ListedCamera, streamId: number): Promise<string> {
         const params: Record<string, any> = {
             deviceId: camera.deviceId,

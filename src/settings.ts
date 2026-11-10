@@ -39,5 +39,11 @@ export function createPluginSettings(plugin: PluginSettingsOwner & ScryptedDevic
             noStore: true,
             onPut: async () => plugin.syncDevices(0),
         },
+        lastDiscoveryError: {
+            title: 'Last discovery error',
+            description: 'Empty when the last device refresh succeeded. The device list below may be from an earlier refresh.',
+            readonly: true,
+            defaultValue: '',
+        },
     });
 }

@@ -10,7 +10,7 @@ Wired cameras with a stable LAN RTSP URL should use Scrypted’s **ONVIF** or **
 - Device discovery and camera entities (`VideoCamera`)
 - Cloud preview: short-lived **RTSP** URL, rebroadcast as **720p15** H.264 Baseline short GOP (**H.264 video only**; see below)
 - **AAC audio** forwarded when the cloud stream includes audio (WebRTC may transcode to Opus)
-- Signed URL **refresh** before expiry (works with Rebroadcast / Prebuffer when enabled)
+- Signed URL **refresh** before expiry (works with Rebroadcast / Prebuffer when enabled); cloud preview sessions end when the URL expires, same as Home Assistant (no separate unbind step)
 - **Refresh Devices** and optional **Debug** log level in plugin settings
 
 Not included yet: motion, doorbell, snapshot, PTZ, two-way talk, HomeKit Secure Video automation beyond what Scrypted mixins provide.
@@ -53,6 +53,7 @@ After deploy: **Plugins** → disable and re-enable **Imou Camera** if the serve
 | App ID / App Secret | From the Open Platform console for your application |
 | Log Level | **Info** for normal use; **Debug** for live URL and stream troubleshooting (no secrets logged) |
 | Refresh Devices | Re-runs discovery after credential or account changes |
+| Last discovery error | Read-only; empty after a successful refresh. If set, the device list may still show the previous snapshot |
 
 Each camera appears as a Scrypted **Camera**. Open live view in the UI or route through **WebRTC** / **HomeKit** mixins as with other cameras.
 
@@ -68,7 +69,8 @@ If preview fails with decode or ffmpeg errors on a newer 4K/HEVC model, confirm 
 
 ### Cloud preview tips
 
-- **Prebuffer**: Scrypted recommends **disabling Main Prebuffer** for cloud cameras. Leaving it on keeps a background pull and may hit concurrent-preview limits (`OP1009`) after errors.
+- **Live URLs**: Each preview uses a fresh **`getStreamUrl`** RTSP address. The platform releases the session when the signed URL expires; the plugin does not call a separate unbind API (aligned with the Home Assistant integration).
+- **Prebuffer**: For cloud cameras, **disabling Main Prebuffer** often improves stability and reduces concurrent-preview limits.
 - **Audio**: If preview is unstable, try **No Audio** on the camera stream settings while testing.
 - **One viewer**: Avoid many browser tabs and the Imou phone app live view on the same device at once.
 

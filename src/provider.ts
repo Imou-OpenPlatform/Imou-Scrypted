@@ -11,12 +11,12 @@ const { deviceManager } = sdk;
 export default class ImouCameraPlugin extends ScryptedDeviceBase implements DeviceProvider, Settings {
     devices = new Map<string, ImouCameraDevice>();
     private records = new Map<string, ListedCamera>();
-    private liveTokens = new Map<string, string>();
     private client: ImouClient | undefined;
     private clientKey = '';
     private liveOpenInflight = new Map<string, Promise<LiveAddress>>();
     readonly videoStreamInflight = new Map<string, Promise<MediaObject>>();
     private catalogSync: Promise<void> = Promise.resolve();
+    private syncTail: Promise<void> = Promise.resolve();
     readonly pluginLog: PluginLogger;
 
     settingsStorage = createPluginSettings(this);
@@ -40,7 +40,8 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
     }
 
     async syncDevices(_duration: number): Promise<void> {
-        const run = this.syncDevicesNow(_duration);
+        const run = this.syncTail.then(() => this.syncDevicesNow(_duration));
+        this.syncTail = run.catch(() => { });
         this.catalogSync = run;
         return run;
     }
@@ -51,6 +52,7 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
         if (!appId || !appSecret) {
             this.records.clear();
             await deviceManager.onDevicesChanged({ devices: [] });
+            await this.settingsStorage.putSetting('lastDiscoveryError', '');
             this.pluginLog.info('credentials empty');
             return;
         }
@@ -72,17 +74,23 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
                 ],
             }));
             await deviceManager.onDevicesChanged({ devices });
+            await this.settingsStorage.putSetting('lastDiscoveryError', '');
             this.pluginLog.debug(`cameras=${cameras.map(camera => camera.nativeId).join(',') || '(none)'}`);
             this.pluginLog.info(`discovered ${cameras.length}`);
         }
         catch (error) {
             const host = regionHostFromSetting(dataCenter || DEFAULT_SERVER_REGION);
-            this.pluginLog.error(`${errorMessage(error)} (host=${host})`);
+            const message = errorMessage(error);
+            this.pluginLog.error(`${message} (host=${host})`);
             if (error instanceof ImouApiError && error.code === 'timeout') {
                 this.pluginLog.error(
                     'accessToken timed out from the Scrypted host. Check outbound HTTPS/DNS from the server, then Refresh Devices.',
                 );
             }
+            const detail = error instanceof ImouApiError && error.code === 'timeout'
+                ? `${message}. Check outbound HTTPS/DNS from this server, then Refresh Devices.`
+                : message;
+            await this.settingsStorage.putSetting('lastDiscoveryError', detail.slice(0, 500));
         }
     }
 
@@ -101,7 +109,6 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
     }
 
     async releaseDevice(_id: string, nativeId: string): Promise<void> {
-        await this.closeLive(nativeId);
         this.devices.delete(nativeId);
     }
 
@@ -125,7 +132,6 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
         }
         try {
             const client = this.api(String(dataCenter || DEFAULT_SERVER_REGION), String(appId), String(appSecret));
-            await this.closeLive(nativeId);
             const live = await client.openLive(camera, streamId);
             const host = new URL(live.url).host;
             const eventId = new URL(live.url).searchParams.get('eventLiveID') || '';
@@ -155,21 +161,6 @@ export default class ImouCameraPlugin extends ScryptedDeviceBase implements Devi
             this.clientKey = key;
         }
         return this.client;
-    }
-
-    private async closeLive(nativeId: string) {
-        const liveToken = this.liveTokens.get(nativeId);
-        if (!liveToken || !this.client) {
-            this.liveTokens.delete(nativeId);
-            return;
-        }
-        this.liveTokens.delete(nativeId);
-        try {
-            await this.client.closeLive(liveToken);
-        }
-        catch (error) {
-            this.pluginLog.error(`live nativeId=${nativeId} unbind ${errorMessage(error)}`);
-        }
     }
 }
 
