@@ -70,7 +70,6 @@ If preview fails with decode or ffmpeg errors on a newer 4K/HEVC model, confirm 
 ### Cloud preview tips
 
 - **Live URLs**: Each preview uses a fresh **`getStreamUrl`** RTSP address. The platform releases the session when the signed URL expires; the plugin does not call a separate unbind API (aligned with the Home Assistant integration).
-- **Prebuffer**: For cloud cameras, **disabling Main Prebuffer** often improves stability and reduces concurrent-preview limits.
 - **Audio**: If preview is unstable, try **No Audio** on the camera stream settings while testing.
 - **One viewer**: Avoid many browser tabs and the Imou phone app live view on the same device at once.
 
